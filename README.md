@@ -2,5 +2,4 @@
 ---
 permalink: /index.html
 ---
-My website
-My first change
+Isn't this website cool? It's a task manager with a coder theme.
