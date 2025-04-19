@@ -1,14 +1,488 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Main page</title>
-  </head>
-  <body>
-    <ul>
-      <li><mark><a href="learning/resources.html">Taj Mahal</a></mark></li>
-      <li><mark><a href="learning/qatab_minar.html">Qutb Minar<a></mark></li>
-      <li><mark><a href="learning/lal_kilah.html">Red fort<a></mark></li>
-    </ul>
-  </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Coder's Task Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Styles - Hacker Theme */
+        body {
+            font-family: 'Fira Code', monospace; /* Monospaced font */
+            background-color: #0a0a0a; /* Near black background */
+            color: #00ffcc; /* Bright cyan text */
+        }
+        /* Helper class for neon green text */
+        .text-neon-green {
+             color: #39ff14;
+        }
+         /* Helper class for neon cyan text */
+        .text-neon-cyan {
+             color: #00ffcc;
+        }
+        .kanban-column {
+            min-height: 400px;
+            background-color: rgba(16, 32, 32, 0.8); /* Dark semi-transparent background */
+            border: 1px solid #00ffcc; /* Cyan border */
+            border-radius: 0; /* Sharp corners */
+            padding: 1.5rem;
+            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.3); /* Cyan glow */
+        }
+        .kanban-column.drag-over {
+            background-color: rgba(0, 255, 204, 0.1); /* Highlight with cyan tint */
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.5);
+        }
+        .column-header {
+            border-bottom: 1px solid #00ffcc;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.25rem;
+            font-weight: 600;
+            color: #39ff14; /* Neon green header text */
+            font-size: 1.125rem;
+            text-shadow: 0 0 5px rgba(57, 255, 20, 0.7); /* Green glow */
+        }
+        .tasks-container {
+             min-height: 250px;
+             padding-top: 0.5rem;
+        }
+        .task {
+            background-color: rgba(10, 10, 10, 0.9); /* Very dark task background */
+            padding: 0.875rem 1.125rem;
+            border-radius: 0; /* Sharp corners */
+            margin-bottom: 1rem;
+            cursor: grab;
+            border: 1px solid #333; /* Dark border */
+            border-left: 4px solid #39ff14; /* Neon green accent */
+            color: #e0e0e0; /* Light gray text for readability */
+            transition: opacity 0.2s ease-in-out, border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+            box-shadow: inset 0 0 3px rgba(0,0,0,0.5);
+        }
+        /* Different accent colors per column */
+        #todo .task { border-left-color: #39ff14; } /* Green */
+        #inprogress .task { border-left-color: #ffff00; } /* Yellow */
+        #done .task { border-left-color: #00ffcc; } /* Cyan */
+
+        .task:hover {
+             border-color: #00ffcc; /* Cyan border on hover */
+             background-color: #1a1a1a;
+        }
+        .task:active {
+            cursor: grabbing;
+        }
+        .task.dragging {
+            opacity: 0.7;
+            border: 1px dashed #00ffcc; /* Dashed cyan border when dragging */
+            background-color: rgba(0, 20, 20, 0.8);
+        }
+        .task-input {
+            background-color: #1a1a1a; /* Dark input background */
+            border: 1px solid #333;
+            padding: 0.65rem 0.85rem;
+            border-radius: 0; /* Sharp corners */
+            flex-grow: 1;
+            margin-right: 0.75rem;
+            color: #00ffcc; /* Cyan text */
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .task-input::placeholder {
+            color: #555;
+        }
+        .task-input:focus {
+            outline: none;
+            border-color: #39ff14; /* Green border on focus */
+            box-shadow: 0 0 8px rgba(57, 255, 20, 0.5); /* Green glow on focus */
+        }
+        .add-task-btn {
+            background-color: transparent; /* Transparent background */
+            color: #39ff14; /* Neon green text */
+            font-weight: 500;
+            padding: 0.65rem 1.25rem;
+            border-radius: 0; /* Sharp corners */
+            border: 1px solid #39ff14; /* Green border */
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.1s ease;
+            text-shadow: 0 0 3px rgba(57, 255, 20, 0.5);
+        }
+        .add-task-btn:hover {
+            background-color: rgba(57, 255, 20, 0.1); /* Green tint on hover */
+            color: #fff;
+            box-shadow: 0 0 10px rgba(57, 255, 20, 0.7);
+        }
+         .add-task-btn:active {
+            transform: scale(0.97); /* Slightly more pronounced click effect */
+            background-color: rgba(57, 255, 20, 0.2);
+        }
+        .delete-btn {
+            float: right;
+            background: none;
+            border: none;
+            color: #666; /* Dim gray */
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            margin-left: 0.75rem;
+            padding: 0.1rem;
+            opacity: 0.5;
+            transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out, text-shadow 0.2s ease-in-out;
+        }
+        .task:hover .delete-btn {
+            opacity: 1;
+            color: #ff4444; /* Red for delete */
+            text-shadow: 0 0 5px rgba(255, 68, 68, 0.7);
+        }
+        .delete-btn:hover {
+            color: #ff6666; /* Brighter red */
+        }
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        /* Optional: Subtle Scanline Effect */
+        /* body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 3px, 4px 100%;
+            pointer-events: none;
+            z-index: 10000;
+            opacity: 0.2;
+        } */
+    </style>
+</head>
+<body class="p-4 md:p-8 lg:p-12"> <h1 class="text-4xl font-bold text-center mb-10 text-neon-green uppercase tracking-widest">  The Coder's Task Manager </h1>
+
+    <div class="mb-8 max-w-lg mx-auto flex items-center">
+        <input type="text" id="task-input" class="task-input" placeholder="> Enter new task command...">
+        <button id="add-task-btn" class="add-task-btn">[ Add Task ]</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-7xl mx-auto">
+        <div id="todo" class="kanban-column" data-column-id="todo">
+            <h2 class="column-header">:: QUEUED ::</h2>
+            <div class="tasks-container">
+                </div>
+        </div>
+
+        <div id="inprogress" class="kanban-column" data-column-id="inprogress">
+             <h2 class="column-header">:: EXECUTING ::</h2>
+            <div class="tasks-container">
+                </div>
+        </div>
+
+        <div id="done" class="kanban-column" data-column-id="done">
+             <h2 class="column-header">:: COMPLETED ::</h2>
+            <div class="tasks-container">
+                </div>
+        </div>
+    </div>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <script>
+        // --- DOM Elements ---
+        const taskInput = document.getElementById('task-input');
+        const addTaskBtn = document.getElementById('add-task-btn');
+        const columns = document.querySelectorAll('.kanban-column');
+        const tasksContainers = document.querySelectorAll('.tasks-container');
+        const confettiCanvas = document.getElementById('confetti-canvas');
+
+        // --- Confetti Instance ---
+        const myConfetti = confetti.create(confettiCanvas, {
+            resize: true,
+            useWorker: true
+        });
+
+        // --- State ---
+        let tasks = JSON.parse(localStorage.getItem('kanbanTasks')) || {
+            todo: [],
+            inprogress: [],
+            done: []
+        };
+        let draggedTask = null;
+
+        // --- Functions ---
+
+        /**
+         * Saves the current tasks state to localStorage.
+         */
+        function saveTasks() {
+            try {
+                localStorage.setItem('kanbanTasks', JSON.stringify(tasks));
+            } catch (e) {
+                console.error("Error saving tasks to localStorage:", e);
+                // Handle potential storage errors (e.g., quota exceeded)
+            }
+        }
+
+        /**
+         * Creates a task element.
+         * @param {string} text - The text content of the task.
+         * @param {string} id - The unique ID of the task.
+         * @returns {HTMLElement} - The created task element.
+         */
+        function createTaskElement(text, id) {
+            const taskDiv = document.createElement('div');
+            taskDiv.classList.add('task');
+            taskDiv.setAttribute('draggable', 'true');
+            taskDiv.setAttribute('data-task-id', id);
+
+            // Task Text
+            const taskTextSpan = document.createElement('span');
+            taskTextSpan.textContent = text;
+            taskDiv.appendChild(taskTextSpan);
+
+            // Delete Button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '[x]'; // Hacker-style delete symbol
+            deleteBtn.classList.add('delete-btn');
+            deleteBtn.setAttribute('aria-label', 'Delete task');
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                deleteTask(id);
+            };
+            taskDiv.appendChild(deleteBtn);
+
+            // Drag and Drop Event Listeners for the Task
+            taskDiv.addEventListener('dragstart', (e) => {
+                draggedTask = taskDiv;
+                e.dataTransfer.setData('text/plain', id);
+                e.dataTransfer.effectAllowed = 'move';
+                // Use setTimeout to ensure the class is added after the drag image is created
+                setTimeout(() => taskDiv.classList.add('dragging'), 0);
+            });
+
+            taskDiv.addEventListener('dragend', () => {
+                // Check if the element still exists and has the class before removing
+                if (draggedTask && draggedTask.classList.contains('dragging')) {
+                    draggedTask.classList.remove('dragging');
+                }
+                draggedTask = null;
+            });
+
+            return taskDiv;
+        }
+
+        /**
+         * Renders all tasks onto the board from the state.
+         */
+        function renderTasks() {
+            tasksContainers.forEach(container => container.innerHTML = '');
+
+            for (const columnId in tasks) {
+                const columnElement = document.getElementById(columnId);
+                if (columnElement) {
+                    const tasksContainer = columnElement.querySelector('.tasks-container');
+                    if (tasksContainer && Array.isArray(tasks[columnId])) { // Ensure column data is an array
+                        tasks[columnId].forEach(task => {
+                            if (task && task.id && typeof task.text === 'string') { // Validate task object
+                                const taskElement = createTaskElement(task.text, task.id);
+                                tasksContainer.appendChild(taskElement);
+                            } else {
+                                console.warn("Invalid task object found in column:", columnId, task);
+                                // Optionally remove invalid task from state here
+                            }
+                        });
+                    } else if (!Array.isArray(tasks[columnId])) {
+                         console.warn(`State for column ${columnId} is not an array. Initializing.`);
+                         tasks[columnId] = []; // Initialize if state is corrupted
+                    }
+                } else {
+                     console.warn("Column element not found for ID:", columnId);
+                }
+            }
+        }
+
+        /**
+         * Adds a new task to the 'To Do' column.
+         */
+        function addTask() {
+            const taskText = taskInput.value.trim();
+            if (taskText === '') {
+                taskInput.focus();
+                // Optional: Add a visual cue like a border flash
+                taskInput.style.borderColor = '#ff4444'; // Temporary red border
+                setTimeout(() => { taskInput.style.borderColor = '#39ff14'; }, 500); // Revert to focus color
+                return;
+            }
+
+            const newTask = {
+                id: `task-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                text: taskText
+            };
+
+            if (!Array.isArray(tasks.todo)) {
+                tasks.todo = []; // Initialize if needed
+            }
+
+            tasks.todo.push(newTask);
+            taskInput.value = '';
+            saveTasks();
+            renderTasks();
+
+            const todoContainer = document.getElementById('todo')?.querySelector('.tasks-container');
+            if (todoContainer) {
+                todoContainer.scrollTop = todoContainer.scrollHeight;
+            }
+        }
+
+         /**
+         * Deletes a task by its ID from any column.
+         * @param {string} taskId - The ID of the task to delete.
+         */
+        function deleteTask(taskId) {
+            let found = false;
+            for (const columnId in tasks) {
+                if (Array.isArray(tasks[columnId])) {
+                    const taskIndex = tasks[columnId].findIndex(task => task && task.id === taskId);
+                    if (taskIndex > -1) {
+                        tasks[columnId].splice(taskIndex, 1);
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            if (found) {
+                saveTasks();
+                renderTasks();
+            } else {
+                console.warn("Task not found for deletion:", taskId);
+            }
+        }
+
+        /**
+         * Triggers the confetti animation with hacker theme colors.
+         */
+        function launchConfetti() {
+            myConfetti({
+                particleCount: 150,
+                spread: 80,
+                origin: { y: 0.6 },
+                colors: ['#39ff14', '#00ffcc', '#ffffff', '#00e0e0', '#33ff33'], // Greens, cyans, white
+                shapes: ['square', 'circle'], // Maybe squares look more digital?
+                scalar: 0.8 // Slightly smaller particles
+            });
+        }
+
+        // --- Event Listeners ---
+
+        addTaskBtn.addEventListener('click', addTask);
+        taskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+
+        // Drag and Drop Event Listeners for Columns
+        columns.forEach(column => {
+            column.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const draggingTask = document.querySelector('.task.dragging');
+                if (draggingTask) {
+                   column.classList.add('drag-over');
+                   e.dataTransfer.dropEffect = 'move'; // Explicitly show move cursor
+                } else {
+                   e.dataTransfer.dropEffect = 'none'; // No drop allowed if not dragging task
+                }
+            });
+
+            column.addEventListener('dragleave', (e) => {
+                // More robust check to prevent flickering when moving over child elements
+                if (!column.contains(e.relatedTarget) || e.relatedTarget === null) {
+                    column.classList.remove('drag-over');
+                }
+            });
+
+            column.addEventListener('drop', (e) => {
+                e.preventDefault();
+                column.classList.remove('drag-over');
+
+                if (!draggedTask) return;
+
+                const targetColumnId = column.getAttribute('data-column-id');
+                const taskId = e.dataTransfer.getData('text/plain'); // Get ID from dataTransfer
+                const sourceColumnElement = draggedTask.closest('.kanban-column');
+
+                if (!sourceColumnElement) {
+                    console.error("Could not find source column element for dragged task.");
+                    if (draggedTask) draggedTask.classList.remove('dragging');
+                    draggedTask = null;
+                    return;
+                }
+                const sourceColumnId = sourceColumnElement.getAttribute('data-column-id');
+
+                if (sourceColumnId === targetColumnId) {
+                     if (draggedTask) draggedTask.classList.remove('dragging');
+                     draggedTask = null;
+                     return; // No state change needed
+                }
+
+                // Find task in state
+                let movedTask;
+                let taskIndex = -1;
+
+                if (Array.isArray(tasks[sourceColumnId])) {
+                     taskIndex = tasks[sourceColumnId].findIndex(task => task && task.id === taskId);
+                     if (taskIndex > -1) {
+                         [movedTask] = tasks[sourceColumnId].splice(taskIndex, 1);
+                     }
+                }
+
+                if (movedTask) {
+                    if (!Array.isArray(tasks[targetColumnId])) {
+                        tasks[targetColumnId] = []; // Initialize if needed
+                    }
+                    tasks[targetColumnId].push(movedTask);
+
+                    if (targetColumnId === 'done') {
+                        launchConfetti();
+                    }
+
+                    saveTasks();
+                    renderTasks(); // Re-render immediately
+
+                } else {
+                     console.error("Could not find task in source column state during drop:", taskId, sourceColumnId);
+                     // Ensure dragging class is removed even on error
+                     if (draggedTask) draggedTask.classList.remove('dragging');
+                     draggedTask = null;
+                }
+            });
+        });
+
+        // --- Initial Render ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Attempt to load tasks, handle potential parsing errors
+            try {
+                const loadedTasks = JSON.parse(localStorage.getItem('kanbanTasks'));
+                // Basic validation of loaded data structure
+                if (loadedTasks && typeof loadedTasks === 'object' && loadedTasks.todo && loadedTasks.inprogress && loadedTasks.done) {
+                     tasks = loadedTasks;
+                } else {
+                     console.warn("Invalid data found in localStorage, initializing empty state.");
+                     tasks = { todo: [], inprogress: [], done: [] };
+                     saveTasks(); // Save the initialized empty state
+                }
+            } catch (e) {
+                console.error("Error parsing tasks from localStorage:", e);
+                tasks = { todo: [], inprogress: [], done: [] }; // Fallback to empty state
+            }
+             renderTasks();
+        });
+
+    </script>
+
+</body>
 </html>
